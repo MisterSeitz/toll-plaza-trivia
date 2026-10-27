@@ -13,42 +13,49 @@ interface NodeDef {
   x: number
   y: number
   isChokepoint?: boolean
+  isRoundabout?: boolean
 }
 
+
 const NODE_DEFS: NodeDef[] = [
-  // Gauteng / North
-  { id: 'node_jhb_central', name: 'Johannesburg Park Station', region: 'Gauteng', category: 'hub', x: 470, y: 240 },
-  { id: 'node_n1_midrand', name: 'Midrand Waterfall', region: 'Gauteng', category: 'beats_screen', x: 490, y: 190 },
-  { id: 'node_pta_monument', name: 'Voortrekker Monument', region: 'Gauteng', category: 'history_icons', x: 500, y: 140 },
-  { id: 'node_n1_polokwane', name: 'Polokwane Gateway', region: 'Limpopo', category: 'hub', x: 530, y: 70 },
-  // N4 East
-  { id: 'node_n4_witbank', name: 'eMalahleni Rest Stop', region: 'Mpumalanga', category: 'spaza', x: 560, y: 230 },
-  { id: 'node_n4_nelspruit', name: 'Mbombela Lowveld', region: 'Mpumalanga', category: 'hub', x: 670, y: 220 },
-  // N3 to KZN
-  { id: 'node_n3_heidelberg', name: 'Heidelberg Escarpment', region: 'Gauteng', category: 'slang_lingo', x: 505, y: 285 },
-  { id: 'node_n3_de_lynn_toll', name: 'De Hoek Toll Plaza', region: 'Gauteng', category: 'toll_gate', x: 530, y: 325, isChokepoint: true },
-  { id: 'node_n3_villiers', name: 'Villiers Vaal Crossing', region: 'Free State', category: 'braai_chow', x: 545, y: 365 },
-  { id: 'node_gravel_shortcut_r56', name: 'Karoo Dirt Detour', region: 'Free State', category: 'pothole', x: 630, y: 385 },
-  { id: 'node_n3_harrismith', name: 'Harrismith Mountain Inn', region: 'Free State', category: 'padstal', x: 550, y: 415 },
-  { id: 'node_n3_van_reenen', name: "Van Reenen's Pass", region: 'KZN', category: 'load_shedding', x: 575, y: 450 },
-  { id: 'node_n3_ladysmith', name: 'Ladysmith Junction', region: 'KZN', category: 'history_icons', x: 615, y: 475 },
-  { id: 'node_n3_marianhill_toll', name: 'Marianhill Toll Plaza', region: 'KZN', category: 'toll_gate', x: 650, y: 495, isChokepoint: true },
-  { id: 'node_n3_pmb', name: 'Pietermaritzburg Comrades Wall', region: 'KZN', category: 'diski_bokke', x: 690, y: 515 },
-  { id: 'node_n3_durban_beach', name: 'Durban Moses Mabhida', region: 'KZN', category: 'hub', x: 735, y: 540 },
-  // N2 coast
-  { id: 'node_n2_kokstad', name: 'Kokstad Foothills', region: 'KZN', category: 'scenic_route', x: 650, y: 565 },
-  { id: 'node_n2_east_london', name: 'East London Beachfront', region: 'Eastern Cape', category: 'beats_screen', x: 555, y: 575 },
-  { id: 'node_n2_gqeberha', name: 'Gqeberha Friendly City', region: 'Eastern Cape', category: 'hub', x: 440, y: 575 },
-  { id: 'node_n2_addo', name: 'Addo Elephant Park', region: 'Eastern Cape', category: 'scenic_route', x: 370, y: 560 },
-  { id: 'node_n2_knysna', name: 'Knysna Lagoon Spaza', region: 'Western Cape', category: 'spaza', x: 290, y: 565 },
-  // N1 South
-  { id: 'node_n1_vaal_toll', name: 'Vaal Toll Plaza', region: 'Free State', category: 'toll_gate', x: 435, y: 275, isChokepoint: true },
-  { id: 'node_n1_kroonstad', name: 'Kroonstad Silos', region: 'Free State', category: 'load_shedding', x: 400, y: 320 },
-  { id: 'node_n1_bloem', name: 'Bloemfontein Mangaung', region: 'Free State', category: 'hub', x: 375, y: 380 },
-  { id: 'node_n1_colesberg', name: 'Colesberg Karoo Stop', region: 'Northern Cape', category: 'padstal', x: 330, y: 440 },
-  { id: 'node_n1_beaufort_west', name: 'Beaufort West Plains', region: 'Western Cape', category: 'braai_chow', x: 260, y: 490 },
-  { id: 'node_n1_cpt_waterfront', name: 'Cape Town Table Mountain', region: 'Western Cape', category: 'hub', x: 150, y: 540 },
+  // Limpopo & Gauteng (North)
+  { id: 'node_n1_polokwane', name: 'Polokwane Gateway', region: 'Limpopo', category: 'hub', x: 740, y: 70 },
+  { id: 'node_pta_monument', name: 'Voortrekker Monument', region: 'Gauteng', category: 'history_icons', x: 710, y: 155 },
+  { id: 'node_n1_midrand', name: 'Midrand Waterfall', region: 'Gauteng', category: 'beats_screen', x: 690, y: 235 },
+  { id: 'node_jhb_central', name: 'Johannesburg Park Station', region: 'Gauteng', category: 'hub', x: 670, y: 315 },
+
+  // N4 East (Mpumalanga)
+  { id: 'node_n4_witbank', name: 'eMalahleni Rest Stop', region: 'Mpumalanga', category: 'spaza', x: 850, y: 300 },
+  { id: 'node_n4_nelspruit', name: 'Mbombela Lowveld', region: 'Mpumalanga', category: 'hub', x: 1050, y: 260 },
+
+  // N3 Route to KZN (South-East)
+  { id: 'node_n3_heidelberg', name: 'Heidelberg Escarpment', region: 'Gauteng', category: 'slang_lingo', x: 755, y: 385 },
+  { id: 'node_n3_de_lynn_toll', name: 'De Hoek Toll Plaza', region: 'Gauteng', category: 'toll_gate', x: 820, y: 445, isChokepoint: true },
+  { id: 'node_n3_villiers', name: 'Villiers Vaal Crossing', region: 'Free State', category: 'braai_chow', x: 865, y: 510 },
+  { id: 'node_gravel_shortcut_r56', name: 'Karoo Dirt Detour', region: 'Free State', category: 'pothole', x: 995, y: 520 },
+  { id: 'node_n3_harrismith', name: 'Harrismith Mountain Inn', region: 'Free State', category: 'padstal', x: 885, y: 585 },
+  { id: 'node_n3_van_reenen', name: "Van Reenen's Pass", region: 'KZN', category: 'load_shedding', x: 930, y: 650 },
+  { id: 'node_n3_ladysmith', name: 'Ladysmith Junction', region: 'KZN', category: 'history_icons', x: 980, y: 705 },
+  { id: 'node_n3_marianhill_toll', name: 'Marianhill Toll Plaza', region: 'KZN', category: 'toll_gate', x: 1035, y: 750, isChokepoint: true },
+  { id: 'node_n3_pmb', name: 'Pietermaritzburg Comrades', region: 'KZN', category: 'diski_bokke', x: 1080, y: 790 },
+  { id: 'node_n3_durban_beach', name: 'Durban Moses Mabhida', region: 'KZN', category: 'hub', x: 1135, y: 825 },
+
+  // N2 South Coast (Eastern Cape & Garden Route Arc)
+  { id: 'node_n2_kokstad', name: 'Kokstad Foothills', region: 'KZN', category: 'scenic_route', x: 975, y: 825 },
+  { id: 'node_n2_east_london', name: 'East London Beachfront', region: 'Eastern Cape', category: 'beats_screen', x: 820, y: 825 },
+  { id: 'node_n2_gqeberha', name: 'Gqeberha Friendly City', region: 'Eastern Cape', category: 'hub', x: 650, y: 825 },
+  { id: 'node_n2_addo', name: 'Addo Elephant Park', region: 'Eastern Cape', category: 'scenic_route', x: 515, y: 815 },
+  { id: 'node_n2_knysna', name: 'Knysna Lagoon Spaza', region: 'Western Cape', category: 'spaza', x: 345, y: 815 },
+  { id: 'node_n1_cpt_waterfront', name: 'Cape Town Table Mountain', region: 'Western Cape', category: 'hub', x: 130, y: 805 },
+
+  // N1 South Interior (Karoo & Free State)
+  { id: 'node_n1_beaufort_west', name: 'Beaufort West Plains', region: 'Western Cape', category: 'braai_chow', x: 290, y: 695 },
+  { id: 'node_n1_colesberg', name: 'Colesberg Karoo Circle', region: 'Northern Cape', category: 'padstal', x: 435, y: 595, isRoundabout: true },
+  { id: 'node_n1_bloem', name: 'Bloemfontein Mangaung', region: 'Free State', category: 'hub', x: 530, y: 495 },
+  { id: 'node_n1_kroonstad', name: 'Kroonstad Silos', region: 'Free State', category: 'load_shedding', x: 590, y: 415 },
+  { id: 'node_n1_vaal_toll', name: 'Vaal Toll Plaza', region: 'Free State', category: 'toll_gate', x: 630, y: 355, isChokepoint: true },
 ]
+
 
 type Label = BoardEdge['highwayLabel']
 
@@ -94,11 +101,13 @@ export const MZANSI_BOARD_GRAPH: BoardGraph = (() => {
       region: d.region,
       category: d.category,
       isChokepoint: d.isChokepoint,
+      isRoundabout: d.isRoundabout,
       edges: [],
     }
     graph[d.id] = node
     NODE_COORDINATES[d.id] = { x: d.x, y: d.y }
   }
+
   // Roads are bidirectional.
   for (const [a, b, highwayLabel, routeType] of ROADS) {
     graph[a].edges.push({ targetNodeId: b, routeType, highwayLabel, cost: 1 })

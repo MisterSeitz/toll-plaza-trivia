@@ -31,8 +31,10 @@ export interface BoardNode {
   region: string
   category: TileCategory
   isChokepoint?: boolean
+  isRoundabout?: boolean
   edges: BoardEdge[]
 }
+
 
 export type BoardGraph = Record<string, BoardNode>
 
@@ -153,6 +155,7 @@ export interface AppSettings {
   haptics: boolean
   aiTrivia: boolean
   aiVisuals: boolean
+  ambience: boolean
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -162,4 +165,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   haptics: true,
   aiTrivia: true,
   aiVisuals: false,
+  ambience: false,
 }

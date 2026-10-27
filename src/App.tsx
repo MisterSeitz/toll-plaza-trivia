@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS } from './types/game'
 import { CATEGORY_META } from './data/gameData'
 import { createGame, createPlayer, PLAYER_COLORS, type GameState } from './engine/gameRules'
 import { useOnlineRoom, type LobbyPlayer } from './hooks/useOnlineRoom'
+import { usePublicLobbies } from './hooks/usePublicLobbies'
 import { generateQuestions } from './services/geminiTrivia'
 import { soundManager } from './utils/soundEffects'
 import GameScreen from './components/GameScreen'
@@ -34,10 +35,29 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [localGame, setLocalGame] = useState<GameState | null>(null)
   const [room, setRoom] = useState<{ code: string; me: LobbyPlayer } | null>(null)
+  const [isPublicRoom, setIsPublicRoom] = useState(true)
   const [onlineGame, setOnlineGame] = useState<GameState | null>(null)
   const [extra, setExtra] = useState<TriviaQuestion[]>([])
 
+  const initialRoomCode = useMemo(() => {
+    if (typeof window === 'undefined') return undefined
+    return new URLSearchParams(window.location.search).get('room') || undefined
+  }, [])
+
   const session = useOnlineRoom(room?.code ?? null, room?.me ?? null)
+
+  const hostingInfo = useMemo(() => {
+    if (!room || !session.isHost) return null
+    return {
+      roomCode: room.code,
+      hostName: room.me.name,
+      hostVehicle: room.me.vehicle,
+      playerCount: session.roster.length,
+      isPublic: isPublicRoom,
+    }
+  }, [room, session.isHost, session.roster.length, isPublicRoom])
+
+  usePublicLobbies(hostingInfo)
 
   // Apply persisted audio settings once.
   useEffect(() => {
@@ -45,6 +65,7 @@ export default function App() {
     soundManager.setMasterVolume(settings.master)
     soundManager.setSfxVolume(settings.sfx)
     soundManager.setHaptics(settings.haptics)
+    if (settings.ambience) soundManager.startKarooAmbience()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -84,7 +105,8 @@ export default function App() {
     )
   }
 
-  const joinOnline = (code: string, name: string, vehicle: VehicleType) => {
+  const joinOnline = (code: string, name: string, vehicle: VehicleType, isPublic = true) => {
+    setIsPublicRoom(isPublic)
     setRoom({ code, me: { id: myPlayerId(), name, vehicle, joinedAt: Date.now() } })
   }
 
@@ -102,8 +124,19 @@ export default function App() {
   }
 
   const onlineSession = useMemo(
-    () => (room ? { roomCode: room.code, roster: session.roster, remoteState: session.remoteState, sendState: session.sendState, stateRef: session.stateRef } : undefined),
-    [room, session.roster, session.remoteState, session.sendState, session.stateRef],
+    () =>
+      room
+        ? {
+            roomCode: room.code,
+            roster: session.roster,
+            remoteState: session.remoteState,
+            sendState: session.sendState,
+            sendEmote: session.sendEmote,
+            activeEmotes: session.activeEmotes,
+            stateRef: session.stateRef,
+          }
+        : undefined,
+    [room, session.roster, session.remoteState, session.sendState, session.sendEmote, session.activeEmotes, session.stateRef],
   )
 
   let screen
@@ -114,7 +147,7 @@ export default function App() {
   } else if (room) {
     screen = <WaitingRoom roomCode={room.code} roster={session.roster} hostId={session.hostId} isHost={session.isHost} meId={room.me.id} status={session.status} onStart={hostStart} onLeave={exit} />
   } else {
-    screen = <MainMenu onStartLocal={startLocal} onJoinOnline={joinOnline} />
+    screen = <MainMenu initialRoomCode={initialRoomCode} onStartLocal={startLocal} onJoinOnline={joinOnline} />
   }
 
   return (

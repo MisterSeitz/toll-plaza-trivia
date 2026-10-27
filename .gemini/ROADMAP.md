@@ -241,7 +241,7 @@ Phase 8: Polish, Stress Testing & Build Check   ── [COMPLETED]
 ## Phase 9: Post-Launch Expansion & Mzansi Immersion
 
 ```
-Phase 9.1: Solo Game Mode & AI Bot Drivers          ── [PLANNED / IN PROGRESS]
+Phase 9.1: Solo Game Mode & AI Bot Drivers          ── [COMPLETED]
     │
     ▼
 Phase 9.2: Distinctive Mzansi Gameplay Mechanics     ── [PLANNED]
@@ -253,15 +253,15 @@ Phase 9.3: Authentic Mzansi Audio & Atmosphere       ── [PLANNED]
 Phase 9.4: Multiplayer Social & Quality of Life (QoL)── [PLANNED]
     │
     ▼
-Phase 9.5: Board Map Visual Landmarks               ── [PLANNED]
+Phase 9.5: Board Map Spacing, Zooms & Landmarks   ── [COMPLETED]
 ```
 
 ### 9.1 Solo Game Mode with AI Bot Drivers (Instant Single-Player Playability)
-- [ ] **AI Persona Engine & Archetypes**
+- [x] **AI Persona Engine & Archetypes (`aiDriverEngine.ts`)**
   - **Bra Dan (Quantum Taxi)**: High-speed, shortcut gambler, aggressive at toll gates, quick trivia answers with streetwise confidence.
   - **Oom Piet (Hilux Cruiser)**: Methodical and cautious, sticks to tar highways, avoids potholes, stockpiles spare tyres and biltong at spaza shops, high accuracy in History, Braai Chow, and Scenic Route.
   - **Sipho (Citi Golf Speedster)**: Trivia savant (high accuracy in Beats & Screen, Slang, Diski Bokke), lightning-fast reflex times.
-- [ ] **AI Autonomous Turn Controller**
+- [x] **AI Autonomous Turn Controller (`useGame.ts`)**
   - Automated state transitions with human-like paced delays (900ms–1500ms):
     - `roll`: Automatic roll trigger with dice rattle audio.
     - `choose`: Heuristic path evaluation prioritizing missing provincial souvenirs, avoiding potholes without spare tyres, and favoring persona-aligned road surfaces.
@@ -269,36 +269,79 @@ Phase 9.5: Board Map Visual Landmarks               ── [PLANNED]
     - `toll`: Intelligent decision matrix (spend points, consume taxi pass, or attempt blitz sprint).
     - `spaza`: Persona-tailored purchasing logic.
     - `event`: Smooth card flip and resolution.
-- [ ] **Lobby Solo Mode Integration**
+- [x] **Lobby Solo Mode Integration (`Lobby.tsx`)**
   - Dedicated **"🤖 Solo vs AI"** game setup mode in the main menu.
-  - Instant 1-click quick-start against 1 to 3 AI bot drivers.
+  - Instant 1-click quick-start against 1 to 3 AI bot drivers with customizable persona toggles.
   - Option to toggle any player slot between Human and AI in local pass-and-play.
 
 ### 9.2 Distinctive Mzansi Gameplay Mechanics
-- [ ] **Braai Stand Head-to-Head Wager / Duel (PvP)**: Landing on Braai Chow enables challenging another player to a timed buzzer trivia showdown with points or duplicate souvenirs on the line.
-- [ ] **Minibus Taxi Rank "Hitch a Ride" (Warp Route)**: Pay R50–R100 at major taxi ranks (Bree, Warwick, Cape Town Station) to warp directly across provincial hubs with risk of flat tyres or roadblock checks.
-- [ ] **Traffic Circle / Roundabout Lock Mechanic**: Highway roundabout nodes requiring exact roll numbers or directional challenges to exit toward desired highways.
-- [ ] **Full-Screen Load Shedding Stage Blackout Event**: Ambient darkness overlay, candle/torchlight flickers, and emergency generator pull-cord mini-game to restore lights and timer.
+- [x] **Braai Stand Head-to-Head Wager / Duel (PvP) (`BraaiWagerModal.tsx`)**
+  - Land on `braai_chow` spaces to trigger a Braai Stand modal with options for Solo trivia (+100 pts) or High-Stakes Braaimaster Wager (25, 50, or 100 pts) against another player or AI bot.
+  - Timed 10-second buzzer with head-to-head showdown scoring and procedural sizzling coals audio.
+  - Full AI challenger simulation taking into account persona trivia skill and reaction times.
+- [x] **Minibus Taxi Rank "Hitch a Ride" (Warp Route) (`TaxiRankWarpModal.tsx`)**
+  - Major transit hubs (Bree Taxi Rank JHB, Warwick Junction Durban, Cape Town Station) offer cross-country express routes.
+  - Pay points (R50–R100) or redeem a Taxi Pass to warp directly across provincial hubs.
+  - 25% risk of roadblock or puncture with audio cues and 1-turn delay.
+- [x] **Traffic Circle / Roundabout Lock Mechanic (`RoundaboutLockModal.tsx`)**
+  - Karoo Circle node (`node_n1_colesberg`) with `isRoundabout: true` locking vehicles until cleared.
+  - 3 escape options: Roll an Even number on the die, Answer a South African highway trivia challenge, or Pay a petrol attendant for directions.
+  - Failure incurs another lap around the circle (skip next turn).
+- [x] **Full-Screen Load Shedding Stage Blackout Event (`LoadSheddingModal.tsx`)**
+  - Dramatic Eskom blackout with pitch-black screen overlay, siren warning, and power transformer sound.
+  - 5-second emergency diesel generator pull-cord mini-game (3 quick pulls required to start).
+  - Generator success provides 15s bright lights; failure forces candlelight trivia with reduced 7s timer and halved points.
 
 ### 9.3 Authentic Mzansi Audio & Atmosphere
-- [ ] **Vuvuzela Stadium Blast (`🎺`)**: Procedural Web Audio brass fanfare on claiming souvenirs or winning the match.
-- [ ] **Minibus Taxi Two-Tone Hooter ("Ga-te-way! / Bree!")**: Iconic double beep on overtakes and taxi rank arrivals.
-- [ ] **Campfire Braai Crackle & Kettle Whistle**: Warm ambient audio during rest nodes and padstal visits.
+- [x] **Vuvuzela Stadium Blast (`🎺`) (`soundManager.playVuvuzela`)**
+  - Procedural Web Audio brass synthesis on Bb3 (233.08 Hz) with 2nd/3rd harmonics, 5.5 Hz breath-flutter vibrato, and bandpass plastic horn cone resonance.
+  - Plays on collecting souvenirs and celebratory multi-horn stadium fanfare with crowd roar when winning the match.
+  - Interactive "🎺 Blow Vuvuzela!" victory button and soundboard tester.
+- [x] **Minibus Taxi Two-Tone Hooter ("Ga-te-way! / Bree!") (`soundManager.playTaxiHooter`, `playOvertake`)**
+  - Iconic dual-pulse electric hooter on F5 (698.46 Hz) and A5 (880 Hz).
+  - Triggers on taxi rank / transit hub arrivals, taxi boarding warp, and playful Doppler overtake honks when passing other players on the highway.
+- [x] **Campfire Braai Crackle & Kettle Whistle (`soundManager.playBraaiCrackle`, `playKettleWhistle`)**
+  - Warm Karoo camelthorn coals audio with sub-bass resonance, sizzling white/pink noise, and randomized sharp ember pop impulses on braai spaces.
+  - Whistling enamel padstal kettle with dual harmonic sweep (2180 Hz to 2680 Hz), 6.5 Hz thermal flutter, and steam hiss on padstal visits.
+- [x] **Karoo Night & Roadside Ambience Engine (`soundManager.startKarooAmbience`)**
+  - Procedural looping soundscape: gentle open-road wind breeze and periodic night cricket chirps.
+  - Toggleable in Settings (`AudioSettingsTray.tsx`) with an interactive 🇿🇦 Mzansi Soundboard tester.
 
 ### 9.4 Multiplayer Social & Quality of Life (QoL)
-- [ ] **WhatsApp & Direct URL Invite Deep-Links**: Support `?room=MZANSI-XX` query parameters to auto-fill room codes and jump directly into the lobby for 1-tap WhatsApp invites.
-- [ ] **In-Game Floating Emote Reaction Wheel**: Realtime floating emoji banter (🇿🇦, 🎺, 🥩, 🚕, 🕳️, 🕯️, 🤣, 😱) rendered over vehicles on the board canvas.
-- [ ] **Post-Match Awards & Analytics Podium**: End-of-trip celebration with awards:
+- [x] **WhatsApp & Direct URL Invite Deep-Links**: Support `?room=MZANSI-XX` query parameters to auto-fill room codes and jump directly into the lobby for 1-tap WhatsApp invites.
+- [x] **Online Player Lobbies & Matchmaking ("Challenge Random Driver Online")**:
+  - Live public lobby presence tracking using Supabase Realtime channel (`mzansi:public_lobbies`).
+  - 1-click `⚡ Challenge Random Online Driver` matchmaking that instantly matches into an open road trip or sets up a public host room.
+  - Interactive table of open road trips with host avatar, name, player count (`1/6`), ping, and 1-tap "Join Trip".
+  - Host toggle for "Public Road Trip (Open to challengers online)" vs Private room.
+- [x] **In-Game Floating Emote Reaction Wheel**: Realtime floating emoji banter (🇿🇦, 🎺, 🥩, 🚕, 🕳️, 🕯️, 🤣, 😱) rendered over vehicles on the board canvas, paired with procedural audio hooters and autonomous AI bot banter reactions.
+- [x] **Post-Match Awards & Analytics Podium**: End-of-trip celebration modal (`PostMatchPodiumModal.tsx`) with 1st/2nd/3rd pedestals, celebratory Vuvuzela blast, WhatsApp scorecard sharing, and honorary badges:
   - 🕳️ *Pothole Magnet* (Most potholes hit)
   - ⚡ *Toll Sprint Demon* (Fastest toll clearance)
   - 🛒 *Spaza VIP* (Most rands spent)
   - 🧠 *Mzansi Professor* (Highest trivia accuracy)
 
-### 9.5 Board Map Visual Landmarks
-- [ ] **Stylized SVG Landmarks**: Vector silhouettes directly on the map:
+### 9.5 Board Map Visual Spacing, Zoom Controls & Landmarks
+- [x] **Spacious 1260x900 Coordinate Geometry (`boardGraph.ts`)**
+  - Expanded map coordinate space from 800x620 to 1260x900 (over 2.5x more area).
+  - Increased minimum node distance to 80–170px, eliminating label, road, and vehicle collisions.
+  - Realistic geographical alignment connecting Limpopo, Gauteng, Mpumalanga, Free State, KZN, Eastern Cape, Karoo, and Western Cape.
+- [x] **Multi-Level Zoom & Pan Engine (`BoardMapRenderer.tsx`)**
+  - Interactive on-screen toolbar: `+` (Zoom In), `−` (Zoom Out), `1x` (Full Mzansi), `1.5x` (Regional), `2x` (Detail).
+  - Mouse drag-to-pan, touch drag, and pinch-to-zoom support.
+  - Smooth mouse wheel zoom support.
+  - `📍 Focus` button to center camera on active player vehicle.
+  - `⛶ Fit` button to reset camera to 1x view.
+- [x] **High-Contrast Node Milestones & Souvenir Indicators**
+  - Translucent high-contrast name pill badges (`#09090b` border `#3f3f46`) with crisp typography.
+  - Category and point reward sub-badges (`+25 PTS & CARD`, `TOLL R100`, `SPAZA SHOP`, `SOUVENIRS`).
+  - Animated pulsing green destination indicators (`TAP TO DRIVE`) with rotation rings for reachable nodes.
+- [x] **Stylized SVG Landmarks & Regional Watermarks**
   - Table Mountain & Cableway (Cape Town)
-  - Moses Mabhida Arch (Durban)
+  - Moses Mabhida Stadium Arch (Durban)
   - Soweto Cooling Towers (Johannesburg)
   - Drakensberg Peaks (Van Reenen’s Pass)
-  - Kruger Elephant (Nelspruit / N4)
+  - Kruger Elephant & Lowveld (Nelspruit / N4)
+  - Province background labels: Limpopo, Gauteng, Mpumalanga, Free State, KwaZulu-Natal, Great Karoo, Eastern Cape, Western Cape.
+
 

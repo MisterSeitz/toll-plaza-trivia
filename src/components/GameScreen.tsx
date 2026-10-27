@@ -1,16 +1,22 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import confetti from 'canvas-confetti'
 import type { TriviaQuestion } from '../types/game'
-import { MZANSI_BOARD_GRAPH } from '../engine/boardGraph'
+import { MZANSI_BOARD_GRAPH, NODE_COORDINATES } from '../engine/boardGraph'
 import { type GameState, invCount } from '../engine/gameRules'
 import { useGame, TOLL_COST } from '../hooks/useGame'
-import { GRACE_PERIOD_MS, type LobbyPlayer } from '../hooks/useOnlineRoom'
+import { GRACE_PERIOD_MS, type LobbyPlayer, type OnlineEmotePayload } from '../hooks/useOnlineRoom'
 import BoardMapRenderer from './board/BoardMapRenderer'
 import PlayerDashboardTray from './dashboard/PlayerDashboardTray'
 import TriviaChallengeModal from './modals/TriviaChallengeModal'
 import TollPlazaSprint from './modals/TollPlazaSprint'
 import SpazaShopModal from './modals/SpazaShopModal'
 import EventCardDrawerModal from './modals/EventCardDrawerModal'
+import BraaiWagerModal from './modals/BraaiWagerModal'
+import TaxiRankWarpModal from './modals/TaxiRankWarpModal'
+import RoundaboutLockModal from './modals/RoundaboutLockModal'
+import LoadSheddingModal from './modals/LoadSheddingModal'
+import { PostMatchPodiumModal } from './modals/PostMatchPodiumModal'
+import { EmoteReactionWheel, FloatingEmoteOverlay, type ActiveEmote } from './social/EmoteReactionWheel'
 import type { AppSettings } from '../types/game'
 
 export interface OnlineSession {
@@ -18,6 +24,8 @@ export interface OnlineSession {
   roster: LobbyPlayer[]
   remoteState: GameState | null
   sendState: (s: GameState) => void
+  sendEmote?: (emoji: string) => void
+  activeEmotes?: OnlineEmotePayload[]
   stateRef: { current: GameState | null }
 }
 
@@ -86,6 +94,72 @@ export function GameScreen({ initial, myId, session, settings, extraQuestions, o
     frame()
   }, [state.winnerId])
 
+  const [localEmotes, setLocalEmotes] = useState<ActiveEmote[]>([])
+
+  const playerPositions = useMemo(() => {
+    const map: Record<string, { x: number; y: number }> = {}
+    for (const p of state.players) {
+      const coord = NODE_COORDINATES[p.currentNodeId]
+      if (coord) map[p.id] = coord
+    }
+    return map
+  }, [state.players])
+
+  const allEmotes = useMemo(() => {
+    const list = [...localEmotes, ...(session?.activeEmotes || [])]
+    return list.sort((a, b) => a.timestamp - b.timestamp)
+  }, [localEmotes, session?.activeEmotes])
+
+  const handleSendEmote = (emoji: string) => {
+    const sender = myId ? state.players.find((p) => p.id === myId) || active : active
+    if (session?.sendEmote) {
+      session.sendEmote(emoji)
+    } else {
+      const newEmote: ActiveEmote = {
+        id: crypto.randomUUID(),
+        playerId: sender.id,
+        playerName: sender.name,
+        emoji,
+        timestamp: Date.now(),
+      }
+      setLocalEmotes((prev: ActiveEmote[]) => [...prev.slice(-10), newEmote])
+    }
+  }
+
+  // Autonomous AI bot witty emoji reactions
+  useEffect(() => {
+    if (!state.log) return
+    const aiBots = state.players.filter((p) => p.isAi)
+    if (!aiBots.length) return
+
+    if (Math.random() < 0.45) {
+      const randomBot = aiBots[Math.floor(Math.random() * aiBots.length)]
+      let reaction = '🇿🇦'
+      if (state.log.includes('pothole') || state.log.includes('missed') || state.log.includes('barrier') || state.log.includes('blows a tyre')) {
+        reaction = Math.random() < 0.5 ? '🤣' : '🕳️'
+      } else if (state.log.includes('Load Shedding') || state.log.includes('Eish')) {
+        reaction = Math.random() < 0.5 ? '🕯️' : '😱'
+      } else if (state.log.includes('wins') || state.log.includes('Braai') || state.log.includes('Sharp')) {
+        reaction = Math.random() < 0.5 ? '🎺' : '🥩'
+      } else if (state.log.includes('Taxi') || state.log.includes('hub')) {
+        reaction = '🚕'
+      }
+      const timer = setTimeout(() => {
+        setLocalEmotes((prev: ActiveEmote[]) => [
+          ...prev.slice(-10),
+          {
+            id: crypto.randomUUID(),
+            playerId: randomBot.id,
+            playerName: randomBot.name,
+            emoji: reaction,
+            timestamp: Date.now(),
+          },
+        ])
+      }, 750)
+      return () => clearTimeout(timer)
+    }
+  }, [state.log, state.players])
+
   const winner = state.players.find((p) => p.id === state.winnerId)
   const me = myId ? state.players.find((p) => p.id === myId) ?? active : active
   const dashPlayer = myId ? me : active
@@ -117,13 +191,15 @@ export function GameScreen({ initial, myId, session, settings, extraQuestions, o
               <span className="font-mono text-amber-400">🎁{p.souvenirs.length}</span>
             </div>
           ))}
+          <EmoteReactionWheel onSendEmote={handleSendEmote} />
           <button onClick={onOpenSettings} aria-label="Settings" className="w-8 h-8 rounded-lg bg-stone-800 hover:bg-stone-700 border border-stone-700">⚙️</button>
           <button onClick={onExit} className="px-3 h-8 rounded-lg bg-stone-800 hover:bg-red-900/60 border border-stone-700 text-xs">Leave</button>
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 px-3 pt-2 pb-36 md:pb-28">
+      <main className="relative flex-1 min-h-0 px-3 pt-2 pb-36 md:pb-28">
         <BoardMapRenderer graph={MZANSI_BOARD_GRAPH} players={state.players} activePlayerId={active.id} reachable={state.reachable} canInteract={isMyTurn && state.phase === 'choose'} onSelectDestination={game.chooseDestination} />
+        <FloatingEmoteOverlay emotes={allEmotes} playerPositions={playerPositions} />
       </main>
 
       <PlayerDashboardTray player={dashPlayer} canAct={canAct || (isMyTurn && state.phase === 'choose')} canRoll={canAct && state.phase === 'roll'} diceValue={state.dice} status={statusText} onRollDice={game.rollDice} onUseItem={game.useItem} />
@@ -147,15 +223,59 @@ export function GameScreen({ initial, myId, session, settings, extraQuestions, o
         <EventCardDrawerModal key={pending.card.id} card={pending.card} interactive={isMyTurn} playerName={active.name} aiVisuals={settings.aiVisuals} onApply={game.resolveEvent} />
       )}
 
+      {pending?.kind === 'braai_wager' && (
+        <BraaiWagerModal
+          key={pending.question.id}
+          question={pending.question}
+          activePlayer={active}
+          allPlayers={state.players}
+          interactive={isMyTurn}
+          isAiPlayer={active.isAi}
+          onResolve={game.resolveBraaiWager}
+        />
+      )}
+
+      {pending?.kind === 'taxi_warp' && (
+        <TaxiRankWarpModal
+          key={pending.currentHubId}
+          currentHubId={pending.currentHubId}
+          activePlayer={active}
+          interactive={isMyTurn}
+          isAiPlayer={active.isAi}
+          onResolve={game.resolveTaxiWarp}
+        />
+      )}
+
+      {pending?.kind === 'roundabout' && (
+        <RoundaboutLockModal
+          key={pending.nodeId}
+          nodeId={pending.nodeId}
+          activePlayer={active}
+          interactive={isMyTurn}
+          isAiPlayer={active.isAi}
+          onResolve={game.resolveRoundabout}
+        />
+      )}
+
+      {pending?.kind === 'load_shedding' && (
+        <LoadSheddingModal
+          key={pending.question.id}
+          question={pending.question}
+          activePlayer={active}
+          interactive={isMyTurn}
+          isAiPlayer={active.isAi}
+          onResolve={game.resolveLoadShedding}
+        />
+      )}
+
+
       {winner && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/90 backdrop-blur-md p-4">
-          <div className="max-w-md w-full text-center bg-stone-900 border-2 border-amber-500 rounded-3xl p-8 shadow-2xl">
-            <div className="text-6xl mb-3">🏆</div>
-            <h2 className="text-3xl font-black text-amber-400 mb-1">{winner.name} wins!</h2>
-            <p className="text-sm text-stone-300 mb-5">Collected all {winner.souvenirs.length} souvenirs and reached the finish. Lekker!</p>
-            <button onClick={onExit} className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold uppercase tracking-wider text-sm active:scale-95">Back to menu</button>
-          </div>
-        </div>
+        <PostMatchPodiumModal
+          players={state.players}
+          winnerId={state.winnerId}
+          stats={state.stats}
+          onExit={onExit}
+        />
       )}
     </div>
   )

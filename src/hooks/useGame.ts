@@ -12,7 +12,7 @@ import {
   purchaseItem,
   TARGET_SOUVENIRS,
 } from '../engine/gameRules'
-import { CATEGORY_META, EISH_CARDS, LEKKER_CARDS, SOUVENIRS, SPAZA_CATALOG, pickRandom } from '../data/gameData'
+import { CATEGORY_META, EISH_CARDS, LEKKER_CARDS, SHOP_BY_ID, SOUVENIRS, SPAZA_CATALOG, pickRandom } from '../data/gameData'
 import { pickQuestion } from '../data/questions'
 import { soundManager } from '../utils/soundEffects'
 import { generateBanter } from '../services/geminiTrivia'
@@ -132,8 +132,18 @@ export function useGame({ initial, myId, onlineHostId, onCommit, extraQuestions,
     const player = s.players[s.activeIndex]
 
     if (hasWon(player, nodeId)) {
-      soundManager.playFanfare()
+      soundManager.playVuvuzela(true)
       commit((st) => ({ ...st, phase: 'over', winnerId: player.id, pending: null, reachable: [], log: `${player.name} wins the road trip!` }))
+      return
+    }
+
+    if (node.isRoundabout) {
+      commit((st) => ({
+        ...st,
+        phase: 'busy',
+        pending: { kind: 'roundabout', nodeId },
+        log: `${player.name} is navigating the ${node.name} traffic circle!`,
+      }))
       return
     }
 
@@ -154,6 +164,16 @@ export function useGame({ initial, myId, onlineHostId, onCommit, extraQuestions,
         return
       case 'pothole': {
         soundManager.playTireScreech()
+        commit((st) => ({
+          ...st,
+          stats: {
+            ...st.stats,
+            potholesHit: {
+              ...st.stats.potholesHit,
+              [player.id]: (st.stats.potholesHit[player.id] || 0) + 1,
+            },
+          },
+        }))
         if (invCount(player.inventory, 'spare_tyre') > 0) {
           commit((st) => patch(st, player.id, (p) => ({ ...p, inventory: adjustItem(p.inventory, 'spare_tyre', -1) })))
           commit((st) => ({ ...st, log: `${player.name} swaps in a Spare Tyre — disaster averted!` }))
@@ -165,23 +185,49 @@ export function useGame({ initial, myId, onlineHostId, onCommit, extraQuestions,
       }
       case 'padstal': {
         soundManager.playPadstalBell()
+        soundManager.playKettleWhistle()
         commit((st) => openEvent(patch(st, player.id, (p) => ({ ...p, points: p.points + 25 })), pickRandom(LEKKER_CARDS)))
         return
       }
-      case 'hub':
-        soundManager.playCoin()
-        commit((st) => ({ ...patch(st, player.id, (p) => ({ ...p, points: p.points + 20 })), log: `${player.name} rests at ${node.name} (+20 pts).${player.souvenirs.length < TARGET_SOUVENIRS && ['node_n1_cpt_waterfront', 'node_n3_durban_beach'].includes(nodeId) ? ` Need all ${TARGET_SOUVENIRS} souvenirs to win (have ${player.souvenirs.length}).` : ''}` }))
-        endTurnKeepingLog()
+      case 'hub': {
+        soundManager.playTaxiHooter()
+        commit((st) => ({
+          ...st,
+          phase: 'busy',
+          pending: { kind: 'taxi_warp', currentHubId: nodeId },
+          log: `${player.name} arrived at ${node.name} hub & taxi rank.`,
+        }))
         return
+      }
+      case 'braai_chow': {
+        soundManager.playBraaiCrackle()
+        const question = pickQuestion('braai_chow', new Set(s.usedQuestionIds), extraRef.current)
+        commit((st) => ({
+          ...st,
+          phase: 'busy',
+          usedQuestionIds: [...st.usedQuestionIds, question.id],
+          pending: { kind: 'braai_wager', question },
+          log: `${player.name} pulled up to the Braai Stand at ${node.name}!`,
+        }))
+        return
+      }
       case 'load_shedding': {
         const cat = pickRandom(CATEGORY_KEYS)
-        commit((st) => startTrivia(st, player.id, cat, true))
+        const question = pickQuestion(cat, new Set(s.usedQuestionIds), extraRef.current)
+        commit((st) => ({
+          ...st,
+          phase: 'busy',
+          usedQuestionIds: [...st.usedQuestionIds, question.id],
+          pending: { kind: 'load_shedding', question, restored: false },
+          log: `⚡ Stage 6 Load Shedding hit ${player.name} at ${node.name}!`,
+        }))
         return
       }
       default:
         commit((st) => startTrivia(st, player.id, node.category as CategoryKey, false))
     }
   }
+
 
   /** End turn but keep the explanatory log line for a moment. */
   const endTurnKeepingLog = () => {
@@ -209,7 +255,12 @@ export function useGame({ initial, myId, onlineHostId, onCommit, extraQuestions,
     cancelMove.current = executeStepwiseMovement(
       path,
       (nodeId) => {
-        soundManager.playMove()
+        const othersHere = ref.current.players.some((pl) => pl.id !== playerId && pl.currentNodeId === nodeId)
+        if (othersHere) {
+          soundManager.playOvertake()
+        } else {
+          soundManager.playMove()
+        }
         commit((s) => patch(s, playerId, (p) => ({ ...p, currentNodeId: nodeId })))
       },
       (final) => done(final),
@@ -253,6 +304,9 @@ export function useGame({ initial, myId, onlineHostId, onCommit, extraQuestions,
 
     if (correct) {
       const gotSouvenir = souvenir && !player.souvenirs.includes(souvenir.id)
+      if (gotSouvenir) {
+        soundManager.playVuvuzela(false)
+      }
       const pts = 100 + Math.max(0, secondsLeft) * 2
       next = patch(s, player.id, (p) => ({
         ...p,
@@ -264,6 +318,21 @@ export function useGame({ initial, myId, onlineHostId, onCommit, extraQuestions,
         : `Sharp! ${player.name} scores +${pts} pts.`
     } else {
       line = timedOut ? `Time's up for ${player.name}!` : `Eish! ${player.name} missed that one.`
+    }
+
+    const prevTrivia = s.stats?.triviaAnswers?.[player.id] || { correct: 0, total: 0 }
+    next = {
+      ...next,
+      stats: {
+        ...next.stats,
+        triviaAnswers: {
+          ...next.stats?.triviaAnswers,
+          [player.id]: {
+            correct: prevTrivia.correct + (correct ? 1 : 0),
+            total: prevTrivia.total + 1,
+          },
+        },
+      },
     }
 
     if (aiBanter) {
@@ -307,6 +376,18 @@ export function useGame({ initial, myId, onlineHostId, onCommit, extraQuestions,
       if (invCount(player.inventory, 'taxi_pass') < 1) return
       commit((st) => patch(st, player.id, (p) => ({ ...p, inventory: adjustItem(p.inventory, 'taxi_pass', -1) })))
     }
+    if (method === 'sprint') {
+      commit((st) => ({
+        ...st,
+        stats: {
+          ...st.stats,
+          tollSprintsCleared: {
+            ...st.stats.tollSprintsCleared,
+            [player.id]: (st.stats.tollSprintsCleared[player.id] || 0) + 1,
+          },
+        },
+      }))
+    }
     soundManager.playSuccessChime()
     const label = method === 'sprint' ? 'aced the sprint' : method === 'pay' ? `paid ${TOLL_COST} pts` : 'used a Taxi Fare Hooter'
     continueAfterToll(nodeId, remaining, `${player.name} ${label} and the boom gate lifts!`)
@@ -335,13 +416,178 @@ export function useGame({ initial, myId, onlineHostId, onCommit, extraQuestions,
     const res = purchaseItem(player, itemId)
     if (res.error) return res.error
     soundManager.playCoin()
-    commit((st) => patch(st, player.id, () => res.player))
+    const item = SHOP_BY_ID[itemId]
+    commit((st) => ({
+      ...patch(st, player.id, () => res.player),
+      stats: {
+        ...st.stats,
+        spazaSpent: {
+          ...st.stats.spazaSpent,
+          [player.id]: (st.stats.spazaSpent[player.id] || 0) + (item?.price || 0),
+        },
+      },
+    }))
     return null
   }
 
   const closeSpaza = () => {
     commit((s) => ({ ...s, pending: null }))
     endTurn()
+  }
+
+  const resolveBraaiWager = (res: {
+    won: boolean
+    wagerAmount: number
+    challengedPlayerId?: string
+    gotSouvenir: boolean
+  }) => {
+    const s = ref.current
+    if (s.pending?.kind !== 'braai_wager') return
+    const player = s.players[s.activeIndex]
+    const souvenir = SOUVENIRS.find((x) => x.category === 'braai_chow')
+    let next = s
+
+    if (res.won) {
+      const hasSouv = souvenir && !player.souvenirs.includes(souvenir.id)
+      if (hasSouv) {
+        soundManager.playVuvuzela(false)
+      } else {
+        soundManager.playSuccessChime()
+      }
+      const ptsGained = res.wagerAmount > 0 ? res.wagerAmount * 2 : 100
+      next = patch(next, player.id, (p) => ({
+        ...p,
+        points: p.points + ptsGained,
+        souvenirs: hasSouv && souvenir ? [...p.souvenirs, souvenir.id] : p.souvenirs,
+      }))
+      if (res.challengedPlayerId) {
+        next = patch(next, res.challengedPlayerId, (opp) => ({
+          ...opp,
+          points: Math.max(0, opp.points - res.wagerAmount),
+        }))
+      }
+      commit(() => ({
+        ...next,
+        pending: null,
+        log: `${player.name} won the Braai Stand showdown (+${ptsGained} pts)!`,
+      }))
+    } else {
+      if (res.wagerAmount > 0 && res.challengedPlayerId) {
+        next = patch(next, player.id, (p) => ({
+          ...p,
+          points: Math.max(0, p.points - res.wagerAmount),
+        }))
+        next = patch(next, res.challengedPlayerId, (opp) => ({
+          ...opp,
+          points: opp.points + res.wagerAmount,
+        }))
+      }
+      commit(() => ({
+        ...next,
+        pending: null,
+        log: `Eish! ${player.name} lost the Braai showdown.`,
+      }))
+    }
+    endTurnKeepingLog()
+  }
+
+  const resolveTaxiWarp = (res: {
+    tookTaxi: boolean
+    destinationNodeId?: string
+    usedPass: boolean
+    farePoints: number
+    hadRoadblock: boolean
+  }) => {
+    const s = ref.current
+    if (s.pending?.kind !== 'taxi_warp') return
+    const player = s.players[s.activeIndex]
+
+    if (!res.tookTaxi || !res.destinationNodeId) {
+      commit((st) => ({
+        ...patch(st, player.id, (p) => ({ ...p, points: p.points + 20 })),
+        pending: null,
+        log: `${player.name} rested at the hub (+20 pts).`,
+      }))
+      endTurnKeepingLog()
+      return
+    }
+
+    let next = s
+    if (res.usedPass) {
+      next = patch(next, player.id, (p) => ({ ...p, inventory: adjustItem(p.inventory, 'taxi_pass', -1) }))
+    } else if (res.farePoints > 0) {
+      next = patch(next, player.id, (p) => ({ ...p, points: Math.max(0, p.points - res.farePoints) }))
+    }
+
+    animate(player.id, [player.currentNodeId, res.destinationNodeId], (final) => {
+      const destNode = G[final]
+      commit((st) => ({
+        ...st,
+        pending: null,
+        log: res.hadRoadblock
+          ? `Roadblock delayed the trip! ${player.name} arrived at ${destNode?.name || 'hub'}.`
+          : `Sharp sharp! ${player.name} hitched an express taxi to ${destNode?.name || 'hub'}!`,
+      }))
+      endTurnKeepingLog()
+    })
+  }
+
+  const resolveRoundabout = (res: {
+    unlocked: boolean
+    paidDirections: boolean
+    cost: number
+  }) => {
+    const s = ref.current
+    if (s.pending?.kind !== 'roundabout') return
+    const player = s.players[s.activeIndex]
+    let next = s
+
+    if (res.paidDirections && res.cost > 0) {
+      next = patch(next, player.id, (p) => ({ ...p, points: Math.max(0, p.points - res.cost) }))
+    }
+
+    if (res.unlocked) {
+      commit(() => ({
+        ...next,
+        pending: null,
+        log: `${player.name} successfully navigated the traffic circle!`,
+      }))
+    } else {
+      commit(() => ({
+        ...patch(next, player.id, (p) => ({ ...p, skipNextTurn: true })),
+        pending: null,
+        log: `Eish! ${player.name} missed the roundabout exit and does another lap (loses next turn).`,
+      }))
+    }
+    endTurnKeepingLog()
+  }
+
+  const resolveLoadShedding = (res: {
+    correct: boolean
+    generatorStarted: boolean
+    secondsLeft: number
+  }) => {
+    const s = ref.current
+    if (s.pending?.kind !== 'load_shedding') return
+    const player = s.players[s.activeIndex]
+
+    if (res.correct) {
+      const pts = 100 + (res.generatorStarted ? 20 : 50)
+      commit((st) => ({
+        ...patch(st, player.id, (p) => ({ ...p, points: p.points + pts })),
+        pending: null,
+        log: res.generatorStarted
+          ? `Lekker! Generator powered ${player.name} to victory (+${pts} pts)!`
+          : `Mzansi Legend! ${player.name} aced the blackout challenge by candlelight (+${pts} pts)!`,
+      }))
+    } else {
+      commit((st) => ({
+        ...st,
+        pending: null,
+        log: `Eish! Load Shedding defeated ${player.name} in the dark.`,
+      }))
+    }
+    endTurnKeepingLog()
   }
 
   const useItem = (id: ItemId) => {
@@ -444,8 +690,13 @@ export function useGame({ initial, myId, onlineHostId, onCommit, extraQuestions,
     resolveEvent,
     buyItem,
     closeSpaza,
+    resolveBraaiWager,
+    resolveTaxiWarp,
+    resolveRoundabout,
+    resolveLoadShedding,
     useItem,
     forceSkipActive,
     setConnected,
   }
 }
+

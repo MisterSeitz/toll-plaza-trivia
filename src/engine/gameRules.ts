@@ -20,6 +20,17 @@ export type Pending =
   | { kind: 'toll'; nodeId: string; remaining: number; nextNodeCandidates: string[] }
   | { kind: 'event'; card: EventCardData }
   | { kind: 'spaza' }
+  | { kind: 'braai_wager'; question: TriviaQuestion }
+  | { kind: 'taxi_warp'; currentHubId: string }
+  | { kind: 'roundabout'; nodeId: string }
+  | { kind: 'load_shedding'; question: TriviaQuestion; restored: boolean }
+
+export interface MatchStats {
+  potholesHit: Record<string, number>
+  tollSprintsCleared: Record<string, number>
+  spazaSpent: Record<string, number>
+  triviaAnswers: Record<string, { correct: number; total: number }>
+}
 
 export interface GameState {
   players: Player[]
@@ -33,6 +44,7 @@ export interface GameState {
   usedQuestionIds: string[]
   winnerId: string | null
   rev: number
+  stats: MatchStats
 }
 
 export function createPlayer(
@@ -78,6 +90,12 @@ export function createGame(players: Player[]): GameState {
     usedQuestionIds: [],
     winnerId: null,
     rev: 0,
+    stats: {
+      potholesHit: {},
+      tollSprintsCleared: {},
+      spazaSpent: {},
+      triviaAnswers: {},
+    },
   }
 }
 
